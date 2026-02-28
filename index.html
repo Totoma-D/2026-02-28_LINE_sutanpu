@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINEスタンプメーカー</title>
+    <!-- Content Security Policy: XSS対策 -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:;">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- JSZip (for ZIP export) -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+</head>
+
+<body>
+    <header class="app-header">
+        <h1>💬 LINE スタンプメーカー</h1>
+        <div class="header-actions">
+            <!-- Undo機能（V2拡張用だが今回は単純なリストからの削除をメインとするため非表示or無効化） -->
+            <button id="btn-undo" class="btn btn-secondary" disabled title="元に戻す (Ctrl+Z)">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                </svg> Undo
+            </button>
+        </div>
+    </header>
+
+    <main class="app-container">
+        <!-- 左サイド：作業エリア -->
+        <section class="workspace-area">
+
+            <!-- タブエリア（複数画像管理） -->
+            <div class="tabs-container">
+                <div class="tabs-scroll" id="image-tabs">
+                    <!-- タブが動的に生成される -->
+                </div>
+                <!-- ファイルアップロード用非表示input -->
+                <input type="file" id="upload-input" accept="image/png, image/jpeg, image/webp" multiple
+                    style="display: none;">
+                <button id="btn-add-image" class="btn btn-add-tab" title="画像を追加">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 大きなプレビュー画面 -->
+            <div class="preview-container">
+                <div id="preview-wrapper" class="preview-wrapper bg-checkerboard"
+                    title="マウスホイールで拡大縮小、右クリック/中クリック＋ドラッグで移動できます">
+                    <div id="canvas-container" class="canvas-container">
+                        <!-- Canvas (画像表示、グリッド描画、切り抜き選択用) -->
+                        <canvas id="main-canvas"></canvas>
+                        <div id="drag-selection-box" class="selection-box" style="display: none;"></div>
+                    </div>
+                </div>
+                <div id="empty-state" class="empty-state">
+                    <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5"
+                        fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <p>画像をドロップするか、上の＋ボタンから追加してください</p>
+                </div>
+            </div>
+
+            <!-- コントロールパネル -->
+            <div class="controls-panel card">
+
+                <!-- 透過処理 -->
+                <div class="control-group transparency-controls">
+                    <h3>🎨 背景透過処理</h3>
+                    <div class="control-row">
+                        <button id="btn-picker" class="btn btn-icon" title="プレビュー上の色をスポイトで取得">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+                                fill="none">
+                                <path d="M12 2l3 3-8 8-3 5 5-3 8-8 3 3-5 5 5-3z" />
+                            </svg>
+                        </button>
+                        <div class="color-preview" id="picked-color" style="background-color: transparent;"></div>
+
+                        <div class="slider-group">
+                            <label for="tolerance-slider">許容値 <span id="tolerance-val" class="mono">30</span></label>
+                            <input type="range" id="tolerance-slider" min="0" max="100" value="30">
+                        </div>
+
+                        <button id="btn-apply-transparency" class="btn btn-primary btn-small">透過実行</button>
+                    </div>
+
+                    <div class="control-row bg-toggles">
+                        <span class="label-text">確認用背景:</span>
+                        <button class="bg-btn active" data-bg="checkerboard" title="市松模様（デフォルト）"></button>
+                        <button class="bg-btn" data-bg="green" style="background-color: #00FF00;"
+                            title="グリーン（クロマキー）"></button>
+                        <button class="bg-btn" data-bg="blue" style="background-color: #0000FF;"
+                            title="ブルー（クロマキー）"></button>
+                        <button class="bg-btn" data-bg="white" style="background-color: #FFFFFF;" title="ホワイト"></button>
+                        <button class="bg-btn" data-bg="black" style="background-color: #000000;" title="ブラック"></button>
+                    </div>
+                </div>
+
+                <!-- 切り抜き設定 -->
+                <div class="control-group crop-controls">
+                    <h3>✂️ 切り抜き設定</h3>
+
+                    <div class="control-row mode-switch">
+                        <label class="radio-label">
+                            <input type="radio" name="crop-mode" value="grid" checked>
+                            <span>グリッド分割</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="crop-mode" value="free">
+                            <span>自由選択</span>
+                        </label>
+                    </div>
+
+                    <!-- グリッド設定パネル -->
+                    <div id="grid-settings" class="settings-panel">
+                        <div class="slider-group">
+                            <label for="grid-cols">横分割数 <span id="cols-val" class="mono">4</span></label>
+                            <input type="range" id="grid-cols" min="1" max="10" value="4">
+                        </div>
+                        <div class="slider-group">
+                            <label for="grid-rows">縦分割数 <span id="rows-val" class="mono">3</span></label>
+                            <input type="range" id="grid-rows" min="1" max="10" value="3">
+                        </div>
+                    </div>
+
+                    <!-- 自由選択パネル（説明用） -->
+                    <div id="free-settings" class="settings-panel" style="display: none;">
+                        <p class="help-text">プレビュー上をドラッグして領域を選択し、離すと切り抜かれます。</p>
+                    </div>
+
+                    <div class="control-row options-row">
+                        <label class="checkbox-label" title="LINE推奨の10px透明余白を自動で追加し、アスペクト比を維持します">
+                            <input type="checkbox" id="margin-toggle" checked>
+                            <span class="checkbox-box"></span>
+                            10px余白(推奨)
+                        </label>
+                        <button id="btn-crop-all" class="btn btn-secondary btn-small">一括切り抜き(一覧へ)</button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 右サイド：リスト＆エクスポートエリア -->
+        <aside class="sidebar-area card">
+
+            <div class="sidebar-header">
+                <h3>📋 スタンプリスト <span class="count-badge"><span id="stamp-count" class="mono">0</span>/40</span></h3>
+                <button id="btn-clear-all" class="btn btn-icon btn-danger" title="すべて削除">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="stamp-list-container" id="stamp-list">
+                <!-- 生成されたスタンプサムネイルが追加される -->
+            </div>
+
+            <div class="export-panel">
+                <h4>エクスポート設定</h4>
+
+                <div class="export-options">
+                    <div class="export-item">
+                        <label>メイン画像 (240x240)</label>
+                        <select id="select-main-img" class="select-input">
+                            <option value="">未設定 (リストから自動選択)</option>
+                        </select>
+                    </div>
+                    <div class="export-item">
+                        <label>タブ画像 (96x74)</label>
+                        <select id="select-tab-img" class="select-input">
+                            <option value="">未設定 (リストから自動選択)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btn-download-zip" class="btn btn-primary btn-large btn-block" disabled>
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    ZIPファイルとして保存
+                </button>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- 個別編集モーダル（今回は簡易化のため見送りまたは後回しとするが箱だけ用意） -->
+    <div id="editor-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h3>個別編集 (スタンプ #<span id="modal-stamp-id"></span>)</h3>
+                <button id="btn-close-modal" class="btn btn-icon">✕</button>
+            </div>
+            <div class="modal-body">
+                <canvas id="modal-canvas" class="bg-checkerboard"></canvas>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-cancel" class="btn btn-secondary">キャンセル</button>
+                <button id="btn-modal-save" class="btn btn-primary">適用</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- アプリケーションロジック -->
+    <script src="js/app.js"></script>
+</body>
+
+</html>

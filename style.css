@@ -1,0 +1,513 @@
+/* CSS reset & base settings */
+:root {
+    --bg-main: #1a1a2e;
+    --bg-card: #16213e;
+    --bg-panel: #212543;
+    --color-primary: #06C755;
+    --color-primary-hover: #08E065;
+    --color-secondary: #4a4e69;
+    --color-danger: #ff5252;
+    --text-main: #e8e8e8;
+    --text-sub: #a0a0b0;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-radius: 8px;
+    --font-main: 'Inter', 'Noto Sans JP', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.app-header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin: 0;
+}
+
+/* Layout */
+.app-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 16px;
+    padding: 16px;
+}
+
+.workspace-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    /* Prevents flex flex-grow overflowing */
+}
+
+/* Sidebar List */
+.sidebar-area {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.card {
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Typography & utility */
+.mono {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+/* Sub Layouts - Workspace Area */
+/* Tabs */
+.tabs-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.tabs-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 4px;
+    /* for scrollbar */
+}
+
+.tabs-scroll::-webkit-scrollbar {
+    height: 4px;
+}
+
+.tabs-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-secondary);
+    border-radius: 4px;
+}
+
+.tab {
+    padding: 8px 16px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-sub);
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.tab:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.tab.active {
+    background-color: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
+.tab-close {
+    padding: 2px;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    border: none;
+    cursor: pointer;
+}
+
+.tab-close:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Main Preview Box */
+.preview-container {
+    flex: 1;
+    position: relative;
+    background-color: #0f121e;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.preview-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* Pan and zoom is handled via JS transform */
+}
+
+/* Canvas styling */
+#main-canvas {
+    display: block;
+    /* Visual styling handled by js and wrapper classes */
+    cursor: crosshair;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Background preview toggles */
+.bg-checkerboard {
+    background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(135deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(135deg, transparent 75%, #ccc 75%);
+    background-size: 20px 20px;
+    /* 10px 10px cells */
+    background-position: 0 0, 10px 0, 10px -10px, 0px 10px;
+    background-color: #eee;
+}
+
+.bg-green {
+    background-color: #00FF00;
+    background-image: none;
+}
+
+.bg-blue {
+    background-color: #0000FF;
+    background-image: none;
+}
+
+.bg-white {
+    background-color: #FFFFFF;
+    background-image: none;
+}
+
+.bg-black {
+    background-color: #000000;
+    background-image: none;
+}
+
+.canvas-container {
+    position: relative;
+    transform-origin: 0 0;
+}
+
+/* Bottom Controls Panel */
+.controls-panel {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    padding: 16px;
+    min-height: 140px;
+}
+
+.control-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.control-group h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-main);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.slider-group label {
+    white-space: nowrap;
+    width: 90px;
+}
+
+input[type=range] {
+    flex: 1;
+    accent-color: var(--color-primary);
+}
+
+.label-text {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+}
+
+.bg-toggles {
+    gap: 4px;
+}
+
+.bg-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.bg-btn:hover {
+    transform: scale(1.1);
+}
+
+.bg-btn.active {
+    border-color: var(--color-primary);
+}
+
+.color-preview {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(135deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(135deg, transparent 75%, #ccc 75%);
+    background-size: 10px 10px;
+    background-position: 0 0, 5px 0, 5px -5px, 0px 5px;
+    position: relative;
+}
+
+.color-preview::before {
+    /* internal fill */
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-color: inherit;
+    /* will be set by js inline */
+}
+
+/* Sidebar List items */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.1rem;
+}
+
+.count-badge {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    margin-left: auto;
+}
+
+.stamp-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    align-content: start;
+}
+
+/* Single Stamp Item Card */
+.stamp-item {
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.stamp-item:hover {
+    border-color: var(--color-secondary);
+}
+
+.stamp-item img {
+    width: 100%;
+    aspect-ratio: 370 / 320;
+    /* LINE standard bounds */
+    object-fit: contain;
+    background-color: #2a2a2a;
+    /* subtle checker diff */
+    border-radius: 4px;
+}
+
+.stamp-item .actions {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.stamp-index {
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    color: var(--text-sub);
+}
+
+.export-panel {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.export-panel h4 {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.export-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.export-item label {
+    font-size: 0.8rem;
+    color: var(--text-sub);
+}
+
+.select-input {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: 4px;
+    outline: none;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    font-family: var(--font-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: var(--color-secondary);
+    color: #fff;
+}
+
+.btn:hover {
+    filter: brightness(1.1);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-danger {
+    background-color: var(--color-danger);
+}
+
+.btn-icon {
+    padding: 6px;
+    border-radius: 6px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.btn-large {
+    padding: 14px 20px;
+    font-size: 1rem;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-add-tab {
+    background-color: transparent;
+    border: 1px dashed var(--color-secondary);
+    color: var(--text-sub);
+    padding: 8px;
+}
+
+.btn-add-tab:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Selection Box for free crop */
+.selection-box {
+    position: absolute;
+    border: 2px dashed rgba(6, 199, 85, 0.8);
+    background-color: rgba(6, 199, 85, 0.2);
+    pointer-events: none;
+}
+
+.empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    color: var(--text-sub);
+    text-align: center;
+}
