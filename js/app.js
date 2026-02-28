@@ -110,7 +110,8 @@ function handleFiles(files) {
                     name: file.name,
                     file: file,
                     img: img,
-                    processedImageData: null
+                    processedImageData: null,
+                    history: [] // For Undo
                 };
                 images.push(newImgObj);
                 addTab(newImgObj);
@@ -268,7 +269,26 @@ function applyTransparency() {
         processedData = globalColorReplace(imageData, appState.transparencyColor, appState.tolerance);
     }
 
+    // Undoのために履歴に保存
+    activeImgObj.history.push(activeImgObj.processedImageData);
+    if (els.btnUndo) els.btnUndo.disabled = false;
+
     activeImgObj.processedImageData = processedData;
+    renderCanvas();
+}
+
+function handleUndo() {
+    const activeImgObj = getActiveImage();
+    if (!activeImgObj || !activeImgObj.history || activeImgObj.history.length === 0) return;
+
+    // 履歴から一つ前の状態を取り出す
+    const previousState = activeImgObj.history.pop();
+    activeImgObj.processedImageData = previousState;
+
+    if (activeImgObj.history.length === 0 && els.btnUndo) {
+        els.btnUndo.disabled = true;
+    }
+
     renderCanvas();
 }
 
@@ -754,7 +774,12 @@ const els = {
     btnPicker: null,
     colorPreview: null,
     canvasContainer: null,
-    contiguousToggle: null
+    contiguousToggle: null,
+    btnUndo: null,
+    btnGuide: null,
+    guideModal: null,
+    btnCloseGuide: null,
+    guideMarkdownContent: null
 };
 
 const appState = {
@@ -782,6 +807,13 @@ function onImageChanged() {
     renderCanvas();
     appState.transparencyColor = null;
     updateColorPreview(null);
+
+    const activeImgObj = getActiveImage();
+    if (activeImgObj && activeImgObj.history && activeImgObj.history.length > 0) {
+        if (els.btnUndo) els.btnUndo.disabled = false;
+    } else {
+        if (els.btnUndo) els.btnUndo.disabled = true;
+    }
 }
 
 function setupBackgroundToggles() {
@@ -979,6 +1011,11 @@ function init() {
     els.colorPreview = document.getElementById('picked-color');
     els.canvasContainer = document.getElementById('canvas-container');
     els.contiguousToggle = document.getElementById('contiguous-toggle');
+    els.btnUndo = document.getElementById('btn-undo');
+    els.btnGuide = document.getElementById('btn-guide');
+    els.guideModal = document.getElementById('guide-modal');
+    els.btnCloseGuide = document.getElementById('btn-close-guide');
+    els.guideMarkdownContent = document.getElementById('guide-markdown-content');
 
     appState.canvasCtx = els.canvas.getContext('2d');
 
@@ -991,6 +1028,34 @@ function init() {
     setupBackgroundToggles();
     setupCropModeSwitch();
     setupPanZoom();
+
+    if (els.btnUndo) {
+        els.btnUndo.addEventListener('click', handleUndo);
+    }
+
+    if (els.btnGuide && els.guideModal && els.btnCloseGuide && els.guideMarkdownContent) {
+        els.btnGuide.addEventListener('click', () => {
+            const mdElement = document.getElementById('guide-markdown');
+            if (mdElement && typeof marked !== 'undefined') {
+                els.guideMarkdownContent.innerHTML = marked.parse(mdElement.textContent);
+            } else if (mdElement) {
+                // Failsafe if marked.js is not loaded
+                els.guideMarkdownContent.innerText = mdElement.textContent;
+            }
+            els.guideModal.style.display = 'flex';
+        });
+
+        els.btnCloseGuide.addEventListener('click', () => {
+            els.guideModal.style.display = 'none';
+        });
+
+        // Click outside to close
+        els.guideModal.addEventListener('click', (e) => {
+            if (e.target === els.guideModal) {
+                els.guideModal.style.display = 'none';
+            }
+        });
+    }
 
     window.addEventListener('resize', () => {
         if (getActiveImage()) renderCanvas();
