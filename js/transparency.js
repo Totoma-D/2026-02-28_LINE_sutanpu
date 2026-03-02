@@ -22,6 +22,14 @@ export function initTransparency(state, els, renderCb) {
         appEls.btnPicker.classList.add('active'); // assuming some visual feedback
     });
 
+    if (appEls.contiguousToggle) {
+        appEls.contiguousToggle.addEventListener('change', (e) => {
+            appState.contiguous = e.target.checked;
+        });
+        // Initialize state
+        appState.contiguous = appEls.contiguousToggle.checked;
+    }
+
     // 許容値スライダー
     appEls.sliderTolerance.addEventListener('input', (e) => {
         appState.tolerance = parseInt(e.target.value, 10);
@@ -103,12 +111,23 @@ export function applyTransparency() {
     ctx.drawImage(activeImgObj.img, 0, 0);
     const imageData = ctx.getImageData(0, 0, w, h);
 
-    // Flood Fill
-    const processedData = floodFillTransparent(
-        imageData,
-        appState.transparencyColor,
-        appState.tolerance
-    );
+    // Choose algorithm based on contiguous setting
+    let processedData;
+    if (appState.contiguous !== false) {
+        // Flood Fill (繋がっている部分のみ)
+        processedData = floodFillTransparent(
+            imageData,
+            appState.transparencyColor,
+            appState.tolerance
+        );
+    } else {
+        // Global Replace (画像全体から似た色を削除)
+        processedData = globalTransparent(
+            imageData,
+            appState.transparencyColor,
+            appState.tolerance
+        );
+    }
 
     // Save to state
     activeImgObj.processedImageData = processedData;
@@ -210,4 +229,43 @@ function applyAntiAlias(data, boundaryPixelsSet) {
             data[idx + 3] = 180; // 約70%の不透明度
         }
     });
+}
+
+/**
+ * 全体透過処理 (対象色に近いピクセルをすべて透過させる)
+ */
+function globalTransparent(imageData, targetColor, tolerance) {
+    const data = imageData.data;
+    const { r: tr, g: tg, b: tb } = targetColor;
+    const boundaryPixels = new Set();
+    const w = imageData.width;
+    const h = imageData.height;
+
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const pixelIdx = y * w + x;
+            const dataIdx = pixelIdx * 4;
+
+            const r = data[dataIdx];
+            const g = data[dataIdx + 1];
+            const b = data[dataIdx + 2];
+            const a = data[dataIdx + 3];
+
+            if (a === 0) continue;
+
+            if (isWithinTolerance(r, g, b, tr, tg, tb, tolerance)) {
+                data[dataIdx + 3] = 0; // Alpha = 0
+
+            } else {
+                // If this pixel is kept, but it is very close to the tolerance threshold (e.g. within tolerance + 15),
+                // we can apply anti-aliasing to smooth it.
+                if (isWithinTolerance(r, g, b, tr, tg, tb, tolerance + 15)) {
+                    boundaryPixels.add(pixelIdx);
+                }
+            }
+        }
+    }
+
+    applyAntiAlias(data, boundaryPixels);
+    return imageData;
 }
