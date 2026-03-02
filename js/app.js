@@ -363,7 +363,7 @@ function applyAntiAlias(data, boundaryPixelsSet) {
 // ==========================================
 // cropper.js
 // ==========================================
-let cropCols = 4;
+let cropCols = 3;
 let cropRows = 3;
 let isDragging = false;
 let startPos = { x: 0, y: 0 };
@@ -619,14 +619,30 @@ function renderList() {
         idxSpan.className = 'stamp-index';
         idxSpan.textContent = `#${String(index + 1).padStart(2, '0')}`;
 
+        const btnPreview = document.createElement('button');
+        btnPreview.className = 'btn-icon';
+        btnPreview.style.marginRight = '4px';
+        btnPreview.innerHTML = '👁️';
+        btnPreview.title = 'LINE画面でプレビュー';
+        btnPreview.addEventListener('click', () => {
+            if (typeof openSimulator === 'function') {
+                openSimulator(blob);
+            }
+        });
+
         const btnDel = document.createElement('button');
         btnDel.className = 'btn-icon btn-danger';
         btnDel.innerHTML = '✕';
         btnDel.title = '削除';
         btnDel.addEventListener('click', () => removeItem(index));
 
+        const actionsRight = document.createElement('div');
+        actionsRight.style.display = 'flex';
+        actionsRight.appendChild(btnPreview);
+        actionsRight.appendChild(btnDel);
+
         actionsDiv.appendChild(idxSpan);
-        actionsDiv.appendChild(btnDel);
+        actionsDiv.appendChild(actionsRight);
         itemDiv.appendChild(img);
         itemDiv.appendChild(actionsDiv);
         listContainer.appendChild(itemDiv);
@@ -779,7 +795,18 @@ const els = {
     btnGuide: null,
     guideModal: null,
     btnCloseGuide: null,
-    guideMarkdownContent: null
+    guideMarkdownContent: null,
+    brushRadios: null,
+    brushSettings: null,
+    brushSizeSlider: null,
+    simStampImg: null,
+    simViewport: null,
+    simBgBtns: null,
+    zoomControls: null,
+    btnZoomIn: null,
+    btnZoomOut: null,
+    btnZoomFit: null,
+    zoomValDisplay: null
 };
 
 const appState = {
@@ -792,11 +819,16 @@ const appState = {
     isPickingColor: false,
     zoom: 1,
     panX: 0,
-    panY: 0
+    panY: 0,
+    brushMode: 'none',
+    brushSize: 20,
+    isBrushing: false,
+    lastBrushPoint: null
 };
 
 function onImageLoaded(imgData) {
     els.emptyState.style.display = 'none';
+    if (els.zoomControls) els.zoomControls.style.display = 'flex';
     renderCanvas();
     if (!appState.transparencyColor) {
         guessBackgroundColor(imgData.img);
@@ -847,6 +879,125 @@ function setupCropModeSwitch() {
     });
 }
 
+function setupSimulator() {
+    if (!els.simulatorModal || !els.btnCloseSimulator) return;
+
+    els.btnCloseSimulator.addEventListener('click', () => {
+        closeSimulator();
+    });
+
+    els.simulatorModal.addEventListener('click', (e) => {
+        if (e.target === els.simulatorModal) {
+            closeSimulator();
+        }
+    });
+
+    if (els.simBgBtns) {
+        els.simBgBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                els.simBgBtns.forEach(b => b.classList.remove('active'));
+                const target = e.currentTarget;
+                target.classList.add('active');
+                const theme = target.dataset.simBg;
+
+                if (theme === 'default') {
+                    els.simViewport.style.backgroundColor = '#7494C0';
+                    els.simViewport.className = 'modal-body';
+                } else if (theme === 'dark') {
+                    els.simViewport.style.backgroundColor = '#1c1c1c';
+                    els.simViewport.className = 'modal-body sim-theme-dark';
+                } else if (theme === 'white') {
+                    els.simViewport.style.backgroundColor = '#ffffff';
+                    els.simViewport.className = 'modal-body sim-theme-white';
+                }
+            });
+        });
+    }
+}
+
+let currentSimUrl = null;
+function openSimulator(blob) {
+    if (!els.simulatorModal || !els.simStampImg) return;
+
+    if (currentSimUrl) {
+        URL.revokeObjectURL(currentSimUrl);
+    }
+    currentSimUrl = URL.createObjectURL(blob);
+    els.simStampImg.src = currentSimUrl;
+    els.simulatorModal.style.display = 'flex';
+}
+
+function closeSimulator() {
+    if (els.simulatorModal) els.simulatorModal.style.display = 'none';
+}
+
+function setupBrushTools() {
+    els.brushRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            appState.brushMode = e.target.value;
+            if (appState.brushMode === 'none') {
+                els.brushSettings.style.display = 'none';
+                els.previewWrapper.style.cursor = 'default';
+            } else {
+                els.brushSettings.style.display = 'flex';
+                els.previewWrapper.style.cursor = 'crosshair';
+            }
+        });
+    });
+
+    els.brushSizeSlider.addEventListener('input', (e) => {
+        appState.brushSize = parseInt(e.target.value, 10);
+        els.brushSizeVal.innerText = appState.brushSize;
+    });
+}
+
+function getCanvasCoords(e) {
+    const rect = els.canvasContainer.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / appState.zoom;
+    const y = (e.clientY - rect.top) / appState.zoom;
+    return { x, y };
+}
+
+function applyBrush(lastP, currP, mode) {
+    const activeImgObj = getActiveImage();
+    if (!activeImgObj) return;
+    const ctx = appState.canvasCtx;
+
+    if (mode === 'eraser') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(lastP.x, lastP.y);
+        ctx.lineTo(currP.x, currP.y);
+        ctx.lineWidth = appState.brushSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.restore();
+    } else if (mode === 'restore') {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = els.canvas.width;
+        offscreen.height = els.canvas.height;
+        const offCtx = offscreen.getContext('2d');
+
+        offCtx.beginPath();
+        offCtx.moveTo(lastP.x, lastP.y);
+        offCtx.lineTo(currP.x, currP.y);
+        offCtx.lineWidth = appState.brushSize;
+        offCtx.lineCap = 'round';
+        offCtx.lineJoin = 'round';
+        offCtx.stroke();
+
+        offCtx.globalCompositeOperation = 'source-in';
+        offCtx.drawImage(activeImgObj.img, 0, 0);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(offscreen, 0, 0);
+        ctx.restore();
+    }
+}
+
 function renderCanvas() {
     const activeImgObj = getActiveImage();
     if (!activeImgObj) return;
@@ -870,11 +1021,6 @@ function renderCanvas() {
         const scaleX = availableW / img.width;
         const scaleY = availableH / img.height;
         appState.zoom = Math.min(scaleX, scaleY, 1.0);
-
-        const scaledW = img.width * appState.zoom;
-        const scaledH = img.height * appState.zoom;
-        appState.panX = (wrapperRect.width - scaledW) / 2;
-        appState.panY = (wrapperRect.height - scaledH) / 2;
 
         activeImgObj.initialZoomSet = true;
     }
@@ -932,12 +1078,12 @@ function globalColorReplace(imageData, targetColor, tolerance) {
     return imageData;
 }
 
-let isPanning = false;
-let panStart = { x: 0, y: 0 };
-
 function setupPanZoom() {
     els.previewWrapper.addEventListener('wheel', (e) => {
+        // Zoom on Ctrl+Scroll or Option+Scroll or normal scroll to just scroll the container
+        if (!e.ctrlKey && !e.metaKey) return;
         e.preventDefault();
+
         const activeImgObj = getActiveImage();
         if (!activeImgObj) return;
 
@@ -954,34 +1100,75 @@ function setupPanZoom() {
         }
         appState.zoom = Math.max(0.1, Math.min(appState.zoom, 10));
 
-        const scaleChange = appState.zoom - oldZoom;
-        appState.panX -= (mouseX - appState.panX) * (scaleChange / oldZoom);
-        appState.panY -= (mouseY - appState.panY) * (scaleChange / oldZoom);
+        const scaleChange = appState.zoom / oldZoom;
+
+        const scrollX = els.previewWrapper.scrollLeft;
+        const scrollY = els.previewWrapper.scrollTop;
+
+        const canvasMouseX = mouseX + scrollX;
+        const canvasMouseY = mouseY + scrollY;
 
         applyCanvasTransform();
+
+        els.previewWrapper.scrollLeft = canvasMouseX * scaleChange - mouseX;
+        els.previewWrapper.scrollTop = canvasMouseY * scaleChange - mouseY;
     }, { passive: false });
+
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let scrollStart = { x: 0, y: 0 };
 
     els.previewWrapper.addEventListener('mousedown', (e) => {
         if (e.button === 1 || e.button === 2) {
             e.preventDefault();
             isPanning = true;
-            panStart = { x: e.clientX - appState.panX, y: e.clientY - appState.panY };
-            els.previewWrapper.style.cursor = 'grab';
+            panStart = { x: e.clientX, y: e.clientY };
+            scrollStart = { x: els.previewWrapper.scrollLeft, y: els.previewWrapper.scrollTop };
+            els.previewWrapper.style.cursor = 'grabbing';
+        } else if (e.button === 0 && (appState.brushMode === 'eraser' || appState.brushMode === 'restore')) {
+            const activeImgObj = getActiveImage();
+            if (!activeImgObj) return;
+
+            if (!activeImgObj.processedImageData) {
+                appState.canvasCtx.drawImage(activeImgObj.img, 0, 0);
+                activeImgObj.processedImageData = appState.canvasCtx.getImageData(0, 0, els.canvas.width, els.canvas.height);
+            }
+
+            appState.isBrushing = true;
+            appState.lastBrushPoint = getCanvasCoords(e);
+
+            activeImgObj.history.push(activeImgObj.processedImageData);
+            if (els.btnUndo) els.btnUndo.disabled = false;
+
+            appState.canvasCtx.putImageData(activeImgObj.processedImageData, 0, 0);
+            applyBrush(appState.lastBrushPoint, appState.lastBrushPoint, appState.brushMode);
         }
     });
 
     window.addEventListener('mousemove', (e) => {
         if (isPanning) {
-            appState.panX = e.clientX - panStart.x;
-            appState.panY = e.clientY - panStart.y;
-            applyCanvasTransform();
+            const dx = e.clientX - panStart.x;
+            const dy = e.clientY - panStart.y;
+            els.previewWrapper.scrollLeft = scrollStart.x - dx;
+            els.previewWrapper.scrollTop = scrollStart.y - dy;
+        } else if (appState.isBrushing) {
+            const currP = getCanvasCoords(e);
+            applyBrush(appState.lastBrushPoint, currP, appState.brushMode);
+            appState.lastBrushPoint = currP;
         }
     });
 
     window.addEventListener('mouseup', (e) => {
         if (isPanning) {
             isPanning = false;
-            els.previewWrapper.style.cursor = 'default';
+            els.previewWrapper.style.cursor = appState.brushMode === 'none' ? 'default' : 'crosshair';
+        } else if (appState.isBrushing) {
+            appState.isBrushing = false;
+            const activeImgObj = getActiveImage();
+            if (activeImgObj) {
+                activeImgObj.processedImageData = appState.canvasCtx.getImageData(0, 0, els.canvas.width, els.canvas.height);
+                renderCanvas();
+            }
         }
     });
 
@@ -990,8 +1177,85 @@ function setupPanZoom() {
 
 function applyCanvasTransform() {
     if (els.canvasContainer) {
-        els.canvasContainer.style.transform = `translate(${appState.panX}px, ${appState.panY}px) scale(${appState.zoom})`;
+        const activeImgObj = getActiveImage();
+        if (!activeImgObj) return;
+
+        const w = els.canvas.width * appState.zoom;
+        const h = els.canvas.height * appState.zoom;
+
+        els.canvasContainer.style.width = w + 'px';
+        els.canvasContainer.style.height = h + 'px';
+        els.canvasContainer.style.transform = 'none';
+
+        els.canvas.style.width = w + 'px';
+        els.canvas.style.height = h + 'px';
+        els.canvas.style.maxWidth = 'none';
+        els.canvas.style.objectFit = 'fill';
     }
+    updateZoomDisplay();
+}
+
+function updateZoomDisplay() {
+    if (els.zoomValDisplay) {
+        els.zoomValDisplay.textContent = Math.round(appState.zoom * 100) + '%';
+    }
+}
+
+function setupZoomControls() {
+    if (!els.btnZoomIn) return;
+
+    els.btnZoomIn.addEventListener('click', () => {
+        appState.zoom += 0.1;
+        appState.zoom = Math.max(0.1, Math.min(appState.zoom, 10));
+        applyCanvasTransform();
+    });
+
+    els.btnZoomOut.addEventListener('click', () => {
+        appState.zoom -= 0.1;
+        appState.zoom = Math.max(0.1, Math.min(appState.zoom, 10));
+        applyCanvasTransform();
+    });
+
+    els.btnZoomFit.addEventListener('click', () => {
+        const activeImgObj = getActiveImage();
+        if (!activeImgObj) return;
+
+        const wrapperRect = els.previewWrapper.getBoundingClientRect();
+        const padding = 40;
+        const availableW = wrapperRect.width - padding;
+        const availableH = wrapperRect.height - padding;
+
+        const scaleX = availableW / els.canvas.width;
+        const scaleY = availableH / els.canvas.height;
+        appState.zoom = Math.min(scaleX, scaleY, 1.0);
+
+        applyCanvasTransform();
+
+        els.previewWrapper.scrollLeft = Math.max(0, (els.canvas.width * appState.zoom - wrapperRect.width) / 2);
+        els.previewWrapper.scrollTop = Math.max(0, (els.canvas.height * appState.zoom - wrapperRect.height) / 2);
+    });
+}
+
+function initFineTuneButtons() {
+    const tuneBtns = document.querySelectorAll('.btn-fine-tune');
+    tuneBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const targetId = btn.getAttribute('data-target');
+            const step = parseInt(btn.getAttribute('data-step'), 10);
+            const input = document.getElementById(targetId);
+            if (!input) return;
+
+            let val = parseInt(input.value, 10);
+            val += step;
+            const min = parseInt(input.min, 10);
+            const max = parseInt(input.max, 10);
+            val = Math.max(min, Math.min(max, val));
+            input.value = val;
+
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
 }
 
 function init() {
@@ -1016,6 +1280,20 @@ function init() {
     els.guideModal = document.getElementById('guide-modal');
     els.btnCloseGuide = document.getElementById('btn-close-guide');
     els.guideMarkdownContent = document.getElementById('guide-markdown-content');
+    els.brushRadios = document.querySelectorAll('input[name="brush-mode"]');
+    els.brushSettings = document.getElementById('brush-settings');
+    els.brushSizeSlider = document.getElementById('brush-size-slider');
+    els.brushSizeVal = document.getElementById('brush-size-val');
+    els.simulatorModal = document.getElementById('simulator-modal');
+    els.btnCloseSimulator = document.getElementById('btn-close-simulator');
+    els.simStampImg = document.getElementById('sim-stamp-img');
+    els.simViewport = document.getElementById('sim-viewport');
+    els.simBgBtns = document.querySelectorAll('button[data-sim-bg]');
+    els.zoomControls = document.getElementById('zoom-controls');
+    els.btnZoomIn = document.getElementById('btn-zoom-in');
+    els.btnZoomOut = document.getElementById('btn-zoom-out');
+    els.btnZoomFit = document.getElementById('btn-zoom-fit');
+    els.zoomValDisplay = document.getElementById('zoom-val-display');
 
     appState.canvasCtx = els.canvas.getContext('2d');
 
@@ -1024,10 +1302,14 @@ function init() {
     initCropper();
     initStampList();
     initExport();
+    initFineTuneButtons();
 
     setupBackgroundToggles();
     setupCropModeSwitch();
     setupPanZoom();
+    setupBrushTools();
+    setupSimulator();
+    setupZoomControls();
 
     if (els.btnUndo) {
         els.btnUndo.addEventListener('click', handleUndo);

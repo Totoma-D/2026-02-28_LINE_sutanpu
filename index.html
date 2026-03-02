@@ -64,14 +64,14 @@
 
             <!-- 大きなプレビュー画面 -->
             <div class="preview-container">
-                <div id="preview-wrapper" class="preview-wrapper bg-checkerboard"
-                    title="マウスホイールで拡大縮小、右クリック/中クリック＋ドラッグで移動できます">
+                <div id="preview-wrapper" class="preview-wrapper bg-checkerboard" title="マウスホイールで拡大縮小できます">
                     <div id="canvas-container" class="canvas-container">
                         <!-- Canvas (画像表示、グリッド描画、切り抜き選択用) -->
                         <canvas id="main-canvas"></canvas>
                         <div id="drag-selection-box" class="selection-box" style="display: none;"></div>
                     </div>
                 </div>
+
                 <div id="empty-state" class="empty-state">
                     <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5"
                         fill="none">
@@ -81,6 +81,18 @@
                     </svg>
                     <p>画像をドロップするか、上の＋ボタンから追加してください</p>
                 </div>
+            </div>
+
+            <!-- ズーム操作バー -->
+            <div class="zoom-controls-bar" id="zoom-controls" style="display: none;">
+                <span style="font-size:14px;color:var(--text-sub);font-weight:bold;">🔍 プレビュー操作</span>
+                <span style="flex:1;"></span> <!-- スペーサー -->
+                <button class="btn btn-secondary btn-small" id="btn-zoom-out" title="縮小">◀ 縮小</button>
+                <span id="zoom-val-display" class="mono"
+                    style="min-width: 60px; text-align: center; font-size:14px;">100%</span>
+                <button class="btn btn-secondary btn-small" id="btn-zoom-in" title="拡大">拡大 ▶</button>
+                <button class="btn btn-primary btn-small" style="margin-left: 8px;" id="btn-zoom-fit"
+                    title="画面サイズに合わせる">全体表示</button>
             </div>
 
             <!-- コントロールパネル -->
@@ -100,10 +112,46 @@
 
                         <div class="slider-group">
                             <label for="tolerance-slider">許容値 <span id="tolerance-val" class="mono">30</span></label>
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="tolerance-slider"
+                                data-step="-1">◀</button>
                             <input type="range" id="tolerance-slider" min="0" max="100" value="30">
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="tolerance-slider"
+                                data-step="1">▶</button>
                         </div>
 
                         <button id="btn-apply-transparency" class="btn btn-primary btn-small">透過実行</button>
+                    </div>
+
+                    <div style="margin-bottom: 8px;">
+                        <label style="cursor: pointer;">
+                            <input type="checkbox" id="contiguous-toggle" checked>
+                            <span class="label-text">繋がっている箇所のみ透過する</span>
+                        </label>
+                    </div>
+
+                    <div class="control-row mode-switch" style="margin-bottom: 8px;">
+                        <label class="radio-label">
+                            <input type="radio" name="brush-mode" value="none" checked>
+                            <span>ブラシOFF</span>
+                        </label>
+                        <label class="radio-label" title="ドラッグした範囲を透明にします" style="color: var(--color-danger);">
+                            <input type="radio" name="brush-mode" value="eraser">
+                            <span>消しゴム</span>
+                        </label>
+                        <label class="radio-label" title="ドラッグした範囲を元の状態に戻します" style="color: var(--color-primary);">
+                            <input type="radio" name="brush-mode" value="restore">
+                            <span>復元ブラシ</span>
+                        </label>
+                    </div>
+
+                    <div id="brush-settings" class="control-row" style="display: none; margin-bottom: 8px;">
+                        <label for="brush-size-slider" class="label-text" style="width: auto;">ブラシ <span
+                                id="brush-size-val" class="mono">20</span></label>
+                        <button class="btn-icon btn-small btn-fine-tune" data-target="brush-size-slider"
+                            data-step="-1">◀</button>
+                        <input type="range" id="brush-size-slider" min="1" max="100" value="20" style="width: 100px;">
+                        <button class="btn-icon btn-small btn-fine-tune" data-target="brush-size-slider"
+                            data-step="1">▶</button>
                     </div>
 
                     <div class="control-row bg-toggles">
@@ -136,30 +184,36 @@
                     <!-- グリッド設定パネル -->
                     <div id="grid-settings" class="settings-panel">
                         <div class="slider-group">
-                            <label for="grid-cols">横分割数 <span id="cols-val" class="mono">4</span></label>
-                            <input type="range" id="grid-cols" min="1" max="10" value="4">
+                            <label for="grid-cols">横分割数 <span id="cols-val" class="mono">3</span></label>
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-cols"
+                                data-step="-1">◀</button>
+                            <input type="range" id="grid-cols" min="1" max="10" value="3">
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-cols"
+                                data-step="1">▶</button>
                         </div>
-                        <div class="slider-group">
+                        <div class="slider-group mt-2">
                             <label for="grid-rows">縦分割数 <span id="rows-val" class="mono">3</span></label>
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-rows"
+                                data-step="-1">◀</button>
                             <input type="range" id="grid-rows" min="1" max="10" value="3">
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-rows"
+                                data-step="1">▶</button>
                         </div>
                     </div>
 
-                    <!-- 自由選択パネル（説明用） -->
+                    <!-- 自由選択設定パネル -->
                     <div id="free-settings" class="settings-panel" style="display: none;">
-                        <p class="help-text">プレビュー上をドラッグして領域を選択し、離すと切り抜かれます。</p>
+                        <p class="label-text">プレビュー画像上でマウスをドラッグして、切り抜く範囲を四角く選択してください。</p>
                     </div>
 
-                    <div class="control-row options-row">
-                        <label class="checkbox-label" title="LINE推奨の10px透明余白を自動で追加し、アスペクト比を維持します">
+                    <div class="control-row" style="margin-top: 12px; justify-content: space-between;">
+                        <label class="checkbox-label" title="LINEの推奨仕様に合わせて、画像の周りに自動で10pxの透明な余白を追加します">
                             <input type="checkbox" id="margin-toggle" checked>
-                            <span class="checkbox-box"></span>
-                            10px余白(推奨)
+                            <span>10px余白(推奨)</span>
                         </label>
-                        <button id="btn-crop-all" class="btn btn-secondary btn-small">一括切り抜き(一覧へ)</button>
+                        <button id="btn-crop-all" class="btn btn-primary">一括切り抜き(一覧へ)</button>
                     </div>
                 </div>
-            </div>
 
         </section>
 
@@ -211,6 +265,60 @@
         </aside>
 
     </main>
+
+    <!-- シミュレーターモーダル (LINEトーク画面のプレビュー) -->
+    <div id="simulator-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content card" style="max-width: 400px; padding: 0;">
+            <div class="modal-header">
+                <h3>トークルーム・プレビュー</h3>
+                <button id="btn-close-simulator" class="btn btn-icon">✕</button>
+            </div>
+
+            <div class="control-row bg-toggles"
+                style="padding: 12px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); justify-content: center;">
+                <button class="bg-btn active" data-sim-bg="default" style="background-color: #7494C0;"
+                    title="標準 (青空)"></button>
+                <button class="bg-btn" data-sim-bg="dark" style="background-color: #1c1c1c;" title="ダークモード"></button>
+                <button class="bg-btn" data-sim-bg="white" style="background-color: #ffffff; border: 1px solid #ccc;"
+                    title="ホワイトテーマ"></button>
+            </div>
+
+            <div class="modal-body"
+                style="padding: 0; display: flex; flex-direction: column; overflow: hidden; background-color: #7494C0;"
+                id="sim-viewport">
+                <!-- Chat Viewport -->
+                <div class="chat-viewport"
+                    style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; min-height: 400px;">
+                    <!-- 相手の吹き出し -->
+                    <div class="chat-row opponent">
+                        <div class="chat-avatar"></div>
+                        <div class="chat-bubble">お疲れ様です！このスタンプ見やすいですか？</div>
+                        <div class="chat-time">10:42</div>
+                    </div>
+                    <!-- 自分のスタンプ送信 -->
+                    <div class="chat-row self">
+                        <div class="chat-time" style="align-self: flex-end;">10:43</div>
+                        <div class="chat-stamp-wrapper">
+                            <img id="sim-stamp-img" src="" alt="Stamp Preview" style="max-width: 140px; height: auto;">
+                        </div>
+                    </div>
+                </div>
+                <!-- 入力欄のダミー UI -->
+                <div class="chat-input-dummy"
+                    style="background-color: #f5f5f5; padding: 10px 16px; display: flex; align-items: center; border-top: 1px solid #ddd;">
+                    <div
+                        style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid #ccc; line-height: 20px; text-align: center; color: #ccc;">
+                        +</div>
+                    <div
+                        style="flex: 1; background: #fff; height: 36px; border-radius: 18px; margin: 0 10px; border: 1px solid #ddd;">
+                    </div>
+                    <div
+                        style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid #ccc; line-height: 20px; text-align: center; color: #ccc;">
+                        ☺</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 個別編集モーダル（今回は簡易化のため見送りまたは後回しとするが箱だけ用意） -->
     <div id="editor-modal" class="modal-overlay" style="display: none;">

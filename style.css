@@ -66,6 +66,7 @@ body {
     flex-direction: column;
     gap: 16px;
     min-width: 0;
+    min-height: 0;
     /* Prevents flex flex-grow overflowing */
 }
 
@@ -167,16 +168,56 @@ body {
     border-radius: var(--border-radius);
     overflow: hidden;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
 }
 
 .preview-wrapper {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: scroll;
     position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    /* Pan and zoom is handled via JS transform */
+    text-align: center;
+}
+
+.zoom-controls-bar {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    gap: 8px;
+}
+
+/* Custom Scrollbar for Preview Wrapper */
+.preview-wrapper::-webkit-scrollbar {
+    width: 20px;
+    height: 20px;
+}
+
+.preview-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.preview-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(120, 120, 120, 0.6);
+    border-radius: 10px;
+    border: 5px solid var(--bg-card);
+    /* Creates padding effect */
+}
+
+.preview-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.8);
+}
+
+.preview-wrapper::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 /* Canvas styling */
@@ -224,16 +265,22 @@ body {
 
 .canvas-container {
     position: relative;
-    transform-origin: 0 0;
+    margin: auto;
+    /* Centering fallback */
+    min-height: calc(100% + 40px);
+    min-width: calc(100% + 40px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Bottom Controls Panel */
 .controls-panel {
-    display: flex;
-    flex-direction: row;
-    gap: 24px;
-    padding: 16px;
-    min-height: 140px;
+    flex-shrink: 0;
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
 }
 
 .control-group {
@@ -494,9 +541,10 @@ input[type=range] {
 /* Selection Box for free crop */
 .selection-box {
     position: absolute;
-    border: 2px dashed rgba(6, 199, 85, 0.8);
-    background-color: rgba(6, 199, 85, 0.2);
+    border: 2px dashed var(--color-primary);
+    background-color: rgba(0, 195, 0, 0.2);
     pointer-events: none;
+    z-index: 10;
 }
 
 .empty-state {
@@ -578,4 +626,57 @@ input[type=range] {
     border: none;
     border-top: 1px solid var(--border-color);
     margin: 2em 0;
+}
+
+/* Simulator Chat Styles */
+.chat-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.chat-row.self {
+    flex-direction: row-reverse;
+}
+
+.chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #ddd;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23aaa"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');
+    background-size: cover;
+    flex-shrink: 0;
+}
+
+.chat-bubble {
+    background-color: #fff;
+    padding: 10px 14px;
+    border-radius: 16px;
+    max-width: 70%;
+    font-size: 0.95rem;
+    color: #333;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.chat-row.opponent .chat-bubble::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: -6px;
+    border-style: solid;
+    border-width: 6px 8px 6px 0;
+    border-color: transparent #fff transparent transparent;
+}
+
+.chat-time {
+    font-size: 0.75rem;
+    color: #ffffffcc;
+    align-self: flex-end;
+    margin-bottom: 2px;
+}
+
+.sim-theme-white .chat-time {
+    color: #999;
 }
