@@ -13,8 +13,8 @@ let renderCb;
 let onCroppedCb;
 
 // Grid Settings
-let cols = 6;
-let rows = 4;
+let cols = 3;
+let rows = 3;
 let offsetX = 0;
 let offsetY = 0;
 
