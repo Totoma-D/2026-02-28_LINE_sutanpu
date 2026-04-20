@@ -80,6 +80,16 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.left-sidebar {
+    width: 340px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
 .card {
     background-color: var(--bg-card);
     border-radius: var(--border-radius);
@@ -274,13 +284,12 @@ body {
     align-items: center;
 }
 
-/* Bottom Controls Panel */
+/* Controls Panel */
 .controls-panel {
-    flex-shrink: 0;
-    margin-top: 16px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 16px;
 }
 
 .control-group {
