@@ -184,19 +184,35 @@
                     <!-- グリッド設定パネル -->
                     <div id="grid-settings" class="settings-panel">
                         <div class="slider-group">
-                            <label for="grid-cols">横分割数 <span id="cols-val" class="mono">3</span></label>
+                            <label for="grid-cols">横分割数 <span id="cols-val" class="mono">6</span></label>
                             <button class="btn-icon btn-small btn-fine-tune" data-target="grid-cols"
                                 data-step="-1">◀</button>
-                            <input type="range" id="grid-cols" min="1" max="10" value="3">
+                            <input type="range" id="grid-cols" min="1" max="10" value="6">
                             <button class="btn-icon btn-small btn-fine-tune" data-target="grid-cols"
                                 data-step="1">▶</button>
                         </div>
                         <div class="slider-group mt-2">
-                            <label for="grid-rows">縦分割数 <span id="rows-val" class="mono">3</span></label>
+                            <label for="grid-rows">縦分割数 <span id="rows-val" class="mono">4</span></label>
                             <button class="btn-icon btn-small btn-fine-tune" data-target="grid-rows"
                                 data-step="-1">◀</button>
-                            <input type="range" id="grid-rows" min="1" max="10" value="3">
+                            <input type="range" id="grid-rows" min="1" max="10" value="4">
                             <button class="btn-icon btn-small btn-fine-tune" data-target="grid-rows"
+                                data-step="1">▶</button>
+                        </div>
+                        <div class="slider-group mt-2">
+                            <label for="grid-offset-x">左右の余白 <span id="offset-x-val" class="mono">0</span>%</label>
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-offset-x"
+                                data-step="-1">◀</button>
+                            <input type="range" id="grid-offset-x" min="0" max="40" value="0">
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-offset-x"
+                                data-step="1">▶</button>
+                        </div>
+                        <div class="slider-group mt-2">
+                            <label for="grid-offset-y">上下の余白 <span id="offset-y-val" class="mono">0</span>%</label>
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-offset-y"
+                                data-step="-1">◀</button>
+                            <input type="range" id="grid-offset-y" min="0" max="40" value="0">
+                            <button class="btn-icon btn-small btn-fine-tune" data-target="grid-offset-y"
                                 data-step="1">▶</button>
                         </div>
                     </div>

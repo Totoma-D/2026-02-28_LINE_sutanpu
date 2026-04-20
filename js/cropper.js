@@ -13,8 +13,10 @@ let renderCb;
 let onCroppedCb;
 
 // Grid Settings
-let cols = 4;
-let rows = 3;
+let cols = 6;
+let rows = 4;
+let offsetX = 0;
+let offsetY = 0;
 
 // Free Selection State
 let isDragging = false;
@@ -45,6 +47,27 @@ export function initCropper(state, els, renderFn, onCroppedFn) {
         renderCb();
     });
 
+    const gridOffsetX = document.getElementById('grid-offset-x');
+    const offsetXVal = document.getElementById('offset-x-val');
+    const gridOffsetY = document.getElementById('grid-offset-y');
+    const offsetYVal = document.getElementById('offset-y-val');
+
+    if (gridOffsetX) {
+        gridOffsetX.addEventListener('input', (e) => {
+            offsetX = parseInt(e.target.value, 10);
+            offsetXVal.textContent = offsetX;
+            renderCb();
+        });
+    }
+
+    if (gridOffsetY) {
+        gridOffsetY.addEventListener('input', (e) => {
+            offsetY = parseInt(e.target.value, 10);
+            offsetYVal.textContent = offsetY;
+            renderCb();
+        });
+    }
+
     // 自由選択（ドラッグ）イベント
     appEls.canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
@@ -62,23 +85,34 @@ export function initCropper(state, els, renderFn, onCroppedFn) {
  */
 function renderOverlay(ctx, w, h) {
     if (appState.currentMode === 'grid') {
-        const cellW = w / cols;
-        const cellH = h / rows;
+        const startX = w * (offsetX / 100);
+        const endX = w - startX;
+        const startY = h * (offsetY / 100);
+        const endY = h - startY;
+
+        const gridW = endX - startX;
+        const gridH = endY - startY;
+
+        const cellW = gridW / cols;
+        const cellH = gridH / rows;
 
         ctx.strokeStyle = 'rgba(255, 80, 80, 0.7)';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
 
         ctx.beginPath();
+        // 外側の境界線
+        ctx.rect(startX, startY, gridW, gridH);
+
         // 縦線
         for (let i = 1; i < cols; i++) {
-            ctx.moveTo(i * cellW, 0);
-            ctx.lineTo(i * cellW, h);
+            ctx.moveTo(startX + i * cellW, startY);
+            ctx.lineTo(startX + i * cellW, endY);
         }
         // 横線
         for (let j = 1; j < rows; j++) {
-            ctx.moveTo(0, j * cellH);
-            ctx.lineTo(w, j * cellH);
+            ctx.moveTo(startX, startY + j * cellH);
+            ctx.lineTo(endX, startY + j * cellH);
         }
         ctx.stroke();
         ctx.setLineDash([]); // reset
@@ -206,8 +240,14 @@ export async function performCropAll() {
     // グリッドモード：全セルを切り抜く
     const w = appEls.canvas.width;
     const h = appEls.canvas.height;
-    const cellW = w / cols;
-    const cellH = h / rows;
+    
+    const startX = w * (offsetX / 100);
+    const startY = h * (offsetY / 100);
+    const gridW = w - (startX * 2);
+    const gridH = h - (startY * 2);
+
+    const cellW = gridW / cols;
+    const cellH = gridH / rows;
 
     const blobs = [];
 
@@ -218,8 +258,8 @@ export async function performCropAll() {
     try {
         for (let j = 0; j < rows; j++) {
             for (let i = 0; i < cols; i++) {
-                const rx = i * cellW;
-                const ry = j * cellH;
+                const rx = startX + i * cellW;
+                const ry = startY + j * cellH;
                 const blob = await extractRegionAndProcess(activeImgObj, rx, ry, cellW, cellH);
                 blobs.push(blob);
             }
