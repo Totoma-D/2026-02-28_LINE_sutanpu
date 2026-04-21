@@ -367,6 +367,8 @@ let cropCols = 3;
 let cropRows = 3;
 let gridOffsetX = 0;
 let gridOffsetY = 0;
+let gridGapX = 0;
+let gridGapY = 0;
 let isDragging = false;
 let startPos = { x: 0, y: 0 };
 let currentPos = { x: 0, y: 0 };
@@ -410,6 +412,27 @@ function initCropper() {
         });
     }
 
+    const gapXInput = document.getElementById('grid-gap-x');
+    const gapXVal = document.getElementById('gap-x-val');
+    const gapYInput = document.getElementById('grid-gap-y');
+    const gapYVal = document.getElementById('gap-y-val');
+
+    if (gapXInput) {
+        gapXInput.addEventListener('input', (e) => {
+            gridGapX = parseInt(e.target.value, 10);
+            gapXVal.textContent = gridGapX;
+            renderCanvas();
+        });
+    }
+
+    if (gapYInput) {
+        gapYInput.addEventListener('input', (e) => {
+            gridGapY = parseInt(e.target.value, 10);
+            gapYVal.textContent = gridGapY;
+            renderCanvas();
+        });
+    }
+
     els.canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
@@ -424,24 +447,26 @@ function renderOverlay(ctx, w, h) {
         const gridW = w - (startX * 2);
         const gridH = h - (startY * 2);
 
-        const cellW = gridW / cropCols;
-        const cellH = gridH / cropRows;
+        const pitchX = gridW / cropCols;
+        const pitchY = gridH / cropRows;
+
+        const cellW = pitchX * (1 - gridGapX / 100);
+        const cellH = pitchY * (1 - gridGapY / 100);
+        const gapOffsetX = (pitchX - cellW) / 2;
+        const gapOffsetY = (pitchY - cellH) / 2;
 
         ctx.strokeStyle = 'rgba(255, 80, 80, 0.7)';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
 
-        // 外枠
-        ctx.rect(startX, startY, gridW, gridH);
-
-        for (let i = 1; i < cropCols; i++) {
-            ctx.moveTo(startX + i * cellW, startY);
-            ctx.lineTo(startX + i * cellW, startY + gridH);
-        }
-        for (let j = 1; j < cropRows; j++) {
-            ctx.moveTo(startX, startY + j * cellH);
-            ctx.lineTo(startX + gridW, startY + j * cellH);
+        // 各セルをの境界線を四角で描画する（すき間ができたとき分かりやすくするため）
+        for (let j = 0; j < cropRows; j++) {
+            for (let i = 0; i < cropCols; i++) {
+                const rx = startX + (i * pitchX) + gapOffsetX;
+                const ry = startY + (j * pitchY) + gapOffsetY;
+                ctx.rect(rx, ry, cellW, cellH);
+            }
         }
         ctx.stroke();
         ctx.setLineDash([]);
@@ -538,8 +563,13 @@ async function performCropAll() {
     const gridW = w - (startX * 2);
     const gridH = h - (startY * 2);
 
-    const cellW = gridW / cropCols;
-    const cellH = gridH / cropRows;
+    const pitchX = gridW / cropCols;
+    const pitchY = gridH / cropRows;
+
+    const cellW = pitchX * (1 - gridGapX / 100);
+    const cellH = pitchY * (1 - gridGapY / 100);
+    const gapOffsetX = (pitchX - cellW) / 2;
+    const gapOffsetY = (pitchY - cellH) / 2;
 
     const blobs = [];
     els.btnCropAll.disabled = true;
@@ -548,8 +578,8 @@ async function performCropAll() {
     try {
         for (let j = 0; j < cropRows; j++) {
             for (let i = 0; i < cropCols; i++) {
-                const rx = startX + i * cellW;
-                const ry = startY + j * cellH;
+                const rx = startX + (i * pitchX) + gapOffsetX;
+                const ry = startY + (j * pitchY) + gapOffsetY;
                 const blob = await extractRegionAndProcess(activeImgObj, rx, ry, cellW, cellH, appState.useMargin);
                 blobs.push(blob);
             }
