@@ -479,8 +479,9 @@ function getCanvasProps() {
 }
 
 function onMouseDown(e) {
+    // スポイト色選択中はclickイベントを通すためpreventDefaultしない
     if (appState.isPickingColor) return;
-    e.preventDefault();
+
     const { rect, scaleX, scaleY } = getCanvasProps();
     const cw = els.canvas.width;
     const ch = els.canvas.height;
@@ -491,6 +492,7 @@ function onMouseDown(e) {
         draggingEdge = null;
         for (let i = 0; i < colLinesX.length; i++) {
             if (Math.abs(cx - colLinesX[i]) < HIT_TOLERANCE) {
+                e.preventDefault();
                 draggingEdge = { axis: 'x', index: i };
                 isDragging = true;
                 return;
@@ -498,6 +500,7 @@ function onMouseDown(e) {
         }
         for (let j = 0; j < rowLinesY.length; j++) {
             if (Math.abs(cy - rowLinesY[j]) < HIT_TOLERANCE) {
+                e.preventDefault();
                 draggingEdge = { axis: 'y', index: j };
                 isDragging = true;
                 return;

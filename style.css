@@ -81,12 +81,14 @@ body {
 }
 
 .left-sidebar {
-    width: 340px;
+    width: 300px;
+    min-width: 260px;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-card);
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
+    overflow-x: hidden;
     overflow-y: auto;
 }
 
@@ -310,6 +312,7 @@ body {
 .control-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
