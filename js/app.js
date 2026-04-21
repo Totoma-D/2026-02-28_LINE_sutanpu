@@ -370,41 +370,35 @@ let gridOffsetY = 0;
 let colLinesX = [];
 let rowLinesY = [];
 let isDragging = false;
+let draggingEdge = null;
 let startPos = { x: 0, y: 0 };
 let currentPos = { x: 0, y: 0 };
-let draggingEdge = null;
 const HIT_TOLERANCE = 15;
 
 function recalcGridData() {
     if (!els.canvas) return;
-    const w = els.canvas.width;
-    const h = els.canvas.height;
-    if (w === 0 || h === 0) return;
+    const cw = els.canvas.width;
+    const ch = els.canvas.height;
+    if (cw === 0 || ch === 0) return;
 
-    const startX = w * (gridOffsetX / 100);
-    const startY = h * (gridOffsetY / 100);
-    const gridW = w - (startX * 2);
-    const gridH = h - (startY * 2);
-
+    const startX = cw * (gridOffsetX / 100);
+    const startY = ch * (gridOffsetY / 100);
+    const gridW = cw - startX * 2;
+    const gridH = ch - startY * 2;
     const pitchX = gridW / cropCols;
     const pitchY = gridH / cropRows;
 
     colLinesX = [];
-    for (let i = 1; i < cropCols; i++) {
-        colLinesX.push(startX + (i * pitchX));
-    }
-
+    for (let i = 1; i < cropCols; i++) colLinesX.push(startX + i * pitchX);
     rowLinesY = [];
-    for (let j = 1; j < cropRows; j++) {
-        rowLinesY.push(startY + (j * pitchY));
-    }
+    for (let j = 1; j < cropRows; j++) rowLinesY.push(startY + j * pitchY);
 }
 
 function initCropper() {
     const gridCols = document.getElementById('grid-cols');
-    const colsVal = document.getElementById('cols-val');
+    const colsVal  = document.getElementById('cols-val');
     const gridRows = document.getElementById('grid-rows');
-    const rowsVal = document.getElementById('rows-val');
+    const rowsVal  = document.getElementById('rows-val');
 
     gridCols.addEventListener('input', (e) => {
         cropCols = parseInt(e.target.value, 10);
@@ -412,7 +406,6 @@ function initCropper() {
         recalcGridData();
         renderCanvas();
     });
-
     gridRows.addEventListener('input', (e) => {
         cropRows = parseInt(e.target.value, 10);
         rowsVal.textContent = cropRows;
@@ -421,9 +414,9 @@ function initCropper() {
     });
 
     const offsetXInput = document.getElementById('grid-offset-x');
-    const offsetXVal = document.getElementById('offset-x-val');
+    const offsetXVal   = document.getElementById('offset-x-val');
     const offsetYInput = document.getElementById('grid-offset-y');
-    const offsetYVal = document.getElementById('offset-y-val');
+    const offsetYVal   = document.getElementById('offset-y-val');
 
     if (offsetXInput) {
         offsetXInput.addEventListener('input', (e) => {
@@ -433,7 +426,6 @@ function initCropper() {
             renderCanvas();
         });
     }
-
     if (offsetYInput) {
         offsetYInput.addEventListener('input', (e) => {
             gridOffsetY = parseInt(e.target.value, 10);
@@ -446,78 +438,78 @@ function initCropper() {
     els.canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-
     els.btnCropAll.addEventListener('click', performCropAll);
 }
 
 function renderOverlay(ctx, w, h) {
-    if (appState.currentMode === 'grid') {
-        const startX = w * (gridOffsetX / 100);
-        const startY = h * (gridOffsetY / 100);
-        const gridW = w - (startX * 2);
-        const gridH = h - (startY * 2);
+    if (appState.currentMode !== 'grid') return;
 
-        ctx.strokeStyle = 'rgba(255, 80, 80, 0.7)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
+    const startX = w * (gridOffsetX / 100);
+    const startY = h * (gridOffsetY / 100);
+    const gridW  = w - startX * 2;
+    const gridH  = h - startY * 2;
 
-        // 外枠
-        ctx.rect(startX, startY, gridW, gridH);
+    ctx.strokeStyle = 'rgba(255, 80, 80, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
 
-        for (let i = 0; i < colLinesX.length; i++) {
-            ctx.moveTo(colLinesX[i], startY);
-            ctx.lineTo(colLinesX[i], startY + gridH);
-        }
-        for (let j = 0; j < rowLinesY.length; j++) {
-            ctx.moveTo(startX, rowLinesY[j]);
-            ctx.lineTo(startX + gridW, rowLinesY[j]);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
+    // 外枠
+    ctx.rect(startX, startY, gridW, gridH);
+
+    // 縦の分割線
+    for (let i = 0; i < colLinesX.length; i++) {
+        ctx.moveTo(colLinesX[i], startY);
+        ctx.lineTo(colLinesX[i], startY + gridH);
     }
+    // 横の分割線
+    for (let j = 0; j < rowLinesY.length; j++) {
+        ctx.moveTo(startX,          rowLinesY[j]);
+        ctx.lineTo(startX + gridW,  rowLinesY[j]);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
 }
 
 function getCanvasProps() {
-    const rect = els.canvas.getBoundingClientRect();
-    const scaleX = els.canvas.width / rect.width;
+    const rect   = els.canvas.getBoundingClientRect();
+    const scaleX = els.canvas.width  / rect.width;
     const scaleY = els.canvas.height / rect.height;
     return { rect, scaleX, scaleY };
 }
 
 function onMouseDown(e) {
     if (appState.isPickingColor) return;
-    
     e.preventDefault();
     const { rect, scaleX, scaleY } = getCanvasProps();
     const cw = els.canvas.width;
     const ch = els.canvas.height;
-    let cx = (e.clientX - rect.left) * scaleX;
-    let cy = (e.clientY - rect.top) * scaleY;
-    cx = Math.max(0, Math.min(cx, cw));
-    cy = Math.max(0, Math.min(cy, ch));
+    let cx = Math.max(0, Math.min((e.clientX - rect.left) * scaleX, cw));
+    let cy = Math.max(0, Math.min((e.clientY - rect.top)  * scaleY, ch));
 
     if (appState.currentMode === 'grid') {
         draggingEdge = null;
         for (let i = 0; i < colLinesX.length; i++) {
             if (Math.abs(cx - colLinesX[i]) < HIT_TOLERANCE) {
                 draggingEdge = { axis: 'x', index: i };
-                isDragging = true; return;
+                isDragging = true;
+                return;
             }
         }
         for (let j = 0; j < rowLinesY.length; j++) {
             if (Math.abs(cy - rowLinesY[j]) < HIT_TOLERANCE) {
                 draggingEdge = { axis: 'y', index: j };
-                isDragging = true; return;
+                isDragging = true;
+                return;
             }
         }
-        return; // グリッドモードで辺に当たらなければ抜ける
+        return; // 線に当たらなければ何もしない
     }
 
+    // freeモード
     if (appState.currentMode !== 'free') return;
-
     isDragging = true;
-    startPos = { x: cx, y: cy };
+    startPos   = { x: cx, y: cy };
     currentPos = { x: cx, y: cy };
     document.getElementById('drag-selection-box').style.display = 'block';
     updateSelectionBox();
@@ -527,23 +519,18 @@ function onMouseMove(e) {
     const { rect, scaleX, scaleY } = getCanvasProps();
     const cw = els.canvas.width;
     const ch = els.canvas.height;
-    let cx = (e.clientX - rect.left) * scaleX;
-    let cy = (e.clientY - rect.top) * scaleY;
-    cx = Math.max(0, Math.min(cx, cw));
-    cy = Math.max(0, Math.min(cy, ch));
+    let cx = Math.max(0, Math.min((e.clientX - rect.left) * scaleX, cw));
+    let cy = Math.max(0, Math.min((e.clientY - rect.top)  * scaleY, ch));
 
+    // ・・・Hover: 線に近いときはカーソル変更
     if (appState.currentMode === 'grid' && !isDragging) {
         let cursor = 'default';
-        for (let i = 0; i < colLinesX.length; i++) {
-            if (Math.abs(cx - colLinesX[i]) < HIT_TOLERANCE) {
-                cursor = 'col-resize'; break;
-            }
+        for (const x of colLinesX) {
+            if (Math.abs(cx - x) < HIT_TOLERANCE) { cursor = 'col-resize'; break; }
         }
         if (cursor === 'default') {
-            for (let j = 0; j < rowLinesY.length; j++) {
-                if (Math.abs(cy - rowLinesY[j]) < HIT_TOLERANCE) {
-                    cursor = 'row-resize'; break;
-                }
+            for (const y of rowLinesY) {
+                if (Math.abs(cy - y) < HIT_TOLERANCE) { cursor = 'row-resize'; break; }
             }
         }
         els.canvas.style.cursor = cursor;
@@ -551,113 +538,103 @@ function onMouseMove(e) {
 
     if (!isDragging) return;
 
+    // ・・・Grid ドラッグ中
     if (appState.currentMode === 'grid' && draggingEdge) {
-        if (draggingEdge.axis === 'x') {
-            const startX = cw * (gridOffsetX / 100);
-            const gridW = cw - (startX * 2);
-            
-            const minX = draggingEdge.index === 0 ? startX : colLinesX[draggingEdge.index - 1] + 10;
-            const maxX = draggingEdge.index === colLinesX.length - 1 ? startX + gridW : colLinesX[draggingEdge.index + 1] - 10;
-            
-            colLinesX[draggingEdge.index] = Math.max(minX, Math.min(cx, maxX));
+        const startX = cw * (gridOffsetX / 100);
+        const startY = ch * (gridOffsetY / 100);
 
-        } else if (draggingEdge.axis === 'y') {
-            const startY = ch * (gridOffsetY / 100);
-            const gridH = ch - (startY * 2);
-            
-            const minY = draggingEdge.index === 0 ? startY : rowLinesY[draggingEdge.index - 1] + 10;
-            const maxY = draggingEdge.index === rowLinesY.length - 1 ? startY + gridH : rowLinesY[draggingEdge.index + 1] - 10;
-            
-            rowLinesY[draggingEdge.index] = Math.max(minY, Math.min(cy, maxY));
+        if (draggingEdge.axis === 'x') {
+            const min = draggingEdge.index === 0                     ? startX                              : colLinesX[draggingEdge.index - 1] + 10;
+            const max = draggingEdge.index === colLinesX.length - 1 ? cw - startX                         : colLinesX[draggingEdge.index + 1] - 10;
+            colLinesX[draggingEdge.index] = Math.max(min, Math.min(cx, max));
+        } else {
+            const min = draggingEdge.index === 0                     ? startY                              : rowLinesY[draggingEdge.index - 1] + 10;
+            const max = draggingEdge.index === rowLinesY.length - 1 ? ch - startY                         : rowLinesY[draggingEdge.index + 1] - 10;
+            rowLinesY[draggingEdge.index] = Math.max(min, Math.min(cy, max));
         }
         renderCanvas();
         return;
     }
 
+    // ・・・Free ドラッグ中
     if (appState.currentMode !== 'free') return;
-
     currentPos = { x: cx, y: cy };
     updateSelectionBox();
 }
 
 function updateSelectionBox() {
     const selBox = document.getElementById('drag-selection-box');
-    const { rect, scaleX, scaleY } = getCanvasProps();
+    const { scaleX, scaleY } = getCanvasProps();
     const x = Math.min(startPos.x, currentPos.x) / scaleX;
     const y = Math.min(startPos.y, currentPos.y) / scaleY;
     const w = Math.abs(currentPos.x - startPos.x) / scaleX;
     const h = Math.abs(currentPos.y - startPos.y) / scaleY;
-
-    const canvasOffsetTop = els.canvas.offsetTop;
-    const canvasOffsetLeft = els.canvas.offsetLeft;
-
-    selBox.style.left = `${canvasOffsetLeft + x}px`;
-    selBox.style.top = `${canvasOffsetTop + y}px`;
-    selBox.style.width = `${w}px`;
+    selBox.style.left   = `${els.canvas.offsetLeft + x}px`;
+    selBox.style.top    = `${els.canvas.offsetTop  + y}px`;
+    selBox.style.width  = `${w}px`;
     selBox.style.height = `${h}px`;
 }
 
 function onMouseUp(e) {
     if (!isDragging) return;
     isDragging = false;
-    
+
     if (appState.currentMode === 'grid') {
         draggingEdge = null;
         return;
     }
-    
     if (appState.currentMode !== 'free') return;
 
     document.getElementById('drag-selection-box').style.display = 'none';
-
     const x = Math.min(startPos.x, currentPos.x);
     const y = Math.min(startPos.y, currentPos.y);
     const w = Math.abs(currentPos.x - startPos.x);
     const h = Math.abs(currentPos.y - startPos.y);
-
     if (w < 10 || h < 10) return;
     cropRectAndAdd(x, y, w, h);
 }
 
 async function performCropAll() {
     const activeImgObj = getActiveImage();
-    if (!activeImgObj) {
-        alert('まずは画像を追加してください。');
-        return;
-    }
+    if (!activeImgObj) { alert('まずは画像を追加してください。'); return; }
     if (appState.currentMode === 'free') {
         alert('自由選択モードでは、画像の上をマウスでドラッグして切り抜いてください。');
         return;
     }
+    const cw = els.canvas.width;
+    const ch = els.canvas.height;
+
+    if (colLinesX.length === 0 && cropCols > 1) recalcGridData();
+    if (rowLinesY.length === 0 && cropRows > 1) recalcGridData();
+
+    const startX = cw * (gridOffsetX / 100);
+    const startY = ch * (gridOffsetY / 100);
+    const endX   = cw - startX;
+    const endY   = ch - startY;
+
+    // 切り抜き座標の境界リスト（内部の分割線 + 外枚）
+    const xs = [startX, ...colLinesX, endX];
+    const ys = [startY, ...rowLinesY, endY];
+
     const blobs = [];
     els.btnCropAll.disabled = true;
     els.btnCropAll.textContent = '処理中...';
 
-    if ((colLinesX.length === 0 || rowLinesY.length === 0) && (cropCols > 1 || cropRows > 1)) {
-        recalcGridData();
-    }
-
-    const startX = w * (gridOffsetX / 100);
-    const startY = h * (gridOffsetY / 100);
-    const gridW = w - (startX * 2);
-    const gridH = h - (startY * 2);
-
     try {
         for (let j = 0; j < cropRows; j++) {
             for (let i = 0; i < cropCols; i++) {
-                const rx = i === 0 ? startX : colLinesX[i - 1];
-                const rw = i === cropCols - 1 ? (startX + gridW) - rx : colLinesX[i] - rx;
-                const ry = j === 0 ? startY : rowLinesY[j - 1];
-                const rh = j === cropRows - 1 ? (startY + gridH) - ry : rowLinesY[j] - ry;
-
+                const rx = xs[i];
+                const ry = ys[j];
+                const rw = xs[i + 1] - xs[i];
+                const rh = ys[j + 1] - ys[j];
                 const blob = await extractRegionAndProcess(activeImgObj, rx, ry, rw, rh, appState.useMargin);
                 blobs.push(blob);
             }
         }
         addItems(blobs);
     } catch (err) {
-        console.error("Crop error:", err);
-        alert("切り抜き中にエラーが発生しました。");
+        console.error('Crop error:', err);
+        alert('切り抜き中にエラーが発生しました。');
     } finally {
         els.btnCropAll.disabled = false;
         els.btnCropAll.textContent = '一括切り抜き(一覧へ)';
@@ -975,7 +952,6 @@ function onImageLoaded(imgData) {
 }
 
 function onImageChanged() {
-    // 状態リセット
     colLinesX = [];
     rowLinesY = [];
     renderCanvas();
@@ -1147,8 +1123,8 @@ function renderCanvas() {
     els.canvas.width = img.width;
     els.canvas.height = img.height;
 
-    // 画像サイズ決定後にグリッドデータが無ければ再計算
-    if ((colLinesX.length === 0 || rowLinesY.length === 0) && (cropCols > 1 || cropRows > 1)) {
+    // 画像サイズ确定後、グリッドデータが空なら初期化
+    if ((colLinesX.length === 0 && cropCols > 1) || (rowLinesY.length === 0 && cropRows > 1)) {
         recalcGridData();
     }
 
