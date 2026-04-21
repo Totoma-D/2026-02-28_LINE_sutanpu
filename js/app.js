@@ -365,6 +365,8 @@ function applyAntiAlias(data, boundaryPixelsSet) {
 // ==========================================
 let cropCols = 3;
 let cropRows = 3;
+let gridOffsetX = 0;
+let gridOffsetY = 0;
 let isDragging = false;
 let startPos = { x: 0, y: 0 };
 let currentPos = { x: 0, y: 0 };
@@ -387,6 +389,27 @@ function initCropper() {
         renderCanvas();
     });
 
+    const offsetXInput = document.getElementById('grid-offset-x');
+    const offsetXVal = document.getElementById('offset-x-val');
+    const offsetYInput = document.getElementById('grid-offset-y');
+    const offsetYVal = document.getElementById('offset-y-val');
+
+    if (offsetXInput) {
+        offsetXInput.addEventListener('input', (e) => {
+            gridOffsetX = parseInt(e.target.value, 10);
+            offsetXVal.textContent = gridOffsetX;
+            renderCanvas();
+        });
+    }
+
+    if (offsetYInput) {
+        offsetYInput.addEventListener('input', (e) => {
+            gridOffsetY = parseInt(e.target.value, 10);
+            offsetYVal.textContent = gridOffsetY;
+            renderCanvas();
+        });
+    }
+
     els.canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
@@ -396,19 +419,29 @@ function initCropper() {
 
 function renderOverlay(ctx, w, h) {
     if (appState.currentMode === 'grid') {
-        const cellW = w / cropCols;
-        const cellH = h / cropRows;
+        const startX = w * (gridOffsetX / 100);
+        const startY = h * (gridOffsetY / 100);
+        const gridW = w - (startX * 2);
+        const gridH = h - (startY * 2);
+
+        const cellW = gridW / cropCols;
+        const cellH = gridH / cropRows;
+
         ctx.strokeStyle = 'rgba(255, 80, 80, 0.7)';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
+
+        // 外枠
+        ctx.rect(startX, startY, gridW, gridH);
+
         for (let i = 1; i < cropCols; i++) {
-            ctx.moveTo(i * cellW, 0);
-            ctx.lineTo(i * cellW, h);
+            ctx.moveTo(startX + i * cellW, startY);
+            ctx.lineTo(startX + i * cellW, startY + gridH);
         }
         for (let j = 1; j < cropRows; j++) {
-            ctx.moveTo(0, j * cellH);
-            ctx.lineTo(w, j * cellH);
+            ctx.moveTo(startX, startY + j * cellH);
+            ctx.lineTo(startX + gridW, startY + j * cellH);
         }
         ctx.stroke();
         ctx.setLineDash([]);
@@ -499,8 +532,14 @@ async function performCropAll() {
     }
     const w = els.canvas.width;
     const h = els.canvas.height;
-    const cellW = w / cropCols;
-    const cellH = h / cropRows;
+    
+    const startX = w * (gridOffsetX / 100);
+    const startY = h * (gridOffsetY / 100);
+    const gridW = w - (startX * 2);
+    const gridH = h - (startY * 2);
+
+    const cellW = gridW / cropCols;
+    const cellH = gridH / cropRows;
 
     const blobs = [];
     els.btnCropAll.disabled = true;
@@ -509,8 +548,8 @@ async function performCropAll() {
     try {
         for (let j = 0; j < cropRows; j++) {
             for (let i = 0; i < cropCols; i++) {
-                const rx = i * cellW;
-                const ry = j * cellH;
+                const rx = startX + i * cellW;
+                const ry = startY + j * cellH;
                 const blob = await extractRegionAndProcess(activeImgObj, rx, ry, cellW, cellH, appState.useMargin);
                 blobs.push(blob);
             }
