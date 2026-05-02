@@ -81,8 +81,8 @@ body {
 }
 
 .left-sidebar {
-    width: 300px;
-    min-width: 260px;
+    width: 360px;
+    min-width: 320px;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-card);
@@ -318,6 +318,7 @@ body {
 
 .slider-group {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     font-size: 0.9rem;
@@ -325,7 +326,8 @@ body {
 
 .slider-group label {
     white-space: nowrap;
-    width: 90px;
+    width: 100%;
+    margin-bottom: 2px;
 }
 
 input[type=range] {
@@ -527,6 +529,11 @@ input[type=range] {
 .btn-small {
     padding: 6px 12px;
     font-size: 0.85rem;
+}
+
+.btn-fine-tune {
+    padding: 4px 8px;
+    min-width: 30px;
 }
 
 .btn-large {

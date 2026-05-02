@@ -14,7 +14,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260502_2">
 
     <!-- JSZip (for ZIP export) -->
     <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
@@ -95,12 +95,12 @@
                         </label>
                     </div>
 
-                    <div id="brush-settings" class="control-row" style="display: none; margin-bottom: 8px;">
-                        <label for="brush-size-slider" class="label-text" style="width: auto;">ブラシ <span
+                    <div id="brush-settings" class="slider-group" style="display: none; margin-bottom: 8px;">
+                        <label for="brush-size-slider" class="label-text">ブラシ <span
                                 id="brush-size-val" class="mono">20</span></label>
                         <button class="btn-icon btn-small btn-fine-tune" data-target="brush-size-slider"
                             data-step="-1">◀</button>
-                        <input type="range" id="brush-size-slider" min="1" max="100" value="20" style="width: 100px;">
+                        <input type="range" id="brush-size-slider" min="1" max="100" value="20">
                         <button class="btn-icon btn-small btn-fine-tune" data-target="brush-size-slider"
                             data-step="1">▶</button>
                     </div>
