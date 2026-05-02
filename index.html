@@ -173,6 +173,13 @@
                         <p class="label-text">プレビュー画像上でマウスをドラッグして、切り抜く範囲を四角く選択してください。</p>
                     </div>
 
+                    <div class="slider-group" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
+                        <label for="stamp-scale" title="余白削除後の基準サイズ（100%で枠いっぱい）">基本サイズ <span id="scale-val" class="mono">100</span>%</label>
+                        <button class="btn-icon btn-small btn-fine-tune" data-target="stamp-scale" data-step="-5">◀</button>
+                        <input type="range" id="stamp-scale" min="50" max="100" value="100" step="1">
+                        <button class="btn-icon btn-small btn-fine-tune" data-target="stamp-scale" data-step="5">▶</button>
+                    </div>
+
                     <div class="control-row" style="margin-top: 12px; justify-content: space-between;">
                         <label class="checkbox-label" title="LINEの推奨仕様に合わせて、画像の周りに自動で10pxの透明な余白を追加します">
                             <input type="checkbox" id="margin-toggle" checked>

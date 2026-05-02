@@ -5,7 +5,7 @@ const MAX_WIDTH = 370;
 const MAX_HEIGHT = 320;
 const MARGIN = 10;
 
-async function processImageForLine(source, addMargin = true) {
+async function processImageForLine(source, addMargin = true, scaleFactor = 1.0) {
     return new Promise((resolve, reject) => {
         const targetW = MAX_WIDTH;
         const targetH = MAX_HEIGHT;
@@ -20,7 +20,8 @@ async function processImageForLine(source, addMargin = true) {
             return;
         }
 
-        const scale = Math_min(drawW / srcW, drawH / srcH, 1.0);
+        const baseScale = Math_min(drawW / srcW, drawH / srcH);
+        const scale = baseScale * scaleFactor;
         let finalW = Math.round(srcW * scale);
         let finalH = Math.round(srcH * scale);
 
@@ -655,6 +656,60 @@ async function cropRectAndAdd(x, y, w, h) {
     }
 }
 
+function trimCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    
+    let top = 0, bottom = h - 1, left = 0, right = w - 1;
+    let found = false;
+    
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 0) { top = y; found = true; break; }
+        }
+        if (found) break;
+    }
+    if (!found) return canvas; 
+    
+    found = false;
+    for (let y = h - 1; y >= 0; y--) {
+        for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 0) { bottom = y; found = true; break; }
+        }
+        if (found) break;
+    }
+    
+    found = false;
+    for (let x = 0; x < w; x++) {
+        for (let y = top; y <= bottom; y++) {
+            if (data[(y * w + x) * 4 + 3] > 0) { left = x; found = true; break; }
+        }
+        if (found) break;
+    }
+    
+    found = false;
+    for (let x = w - 1; x >= 0; x--) {
+        for (let y = top; y <= bottom; y++) {
+            if (data[(y * w + x) * 4 + 3] > 0) { right = x; found = true; break; }
+        }
+        if (found) break;
+    }
+    
+    const trimW = right - left + 1;
+    const trimH = bottom - top + 1;
+    
+    const trimmedCanvas = document.createElement('canvas');
+    trimmedCanvas.width = trimW;
+    trimmedCanvas.height = trimH;
+    const trimmedCtx = trimmedCanvas.getContext('2d');
+    trimmedCtx.drawImage(canvas, left, top, trimW, trimH, 0, 0, trimW, trimH);
+    
+    return trimmedCanvas;
+}
+
 async function extractRegionAndProcess(imgObj, x, y, w, h, useMargin) {
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = Math.round(w);
@@ -670,7 +725,9 @@ async function extractRegionAndProcess(imgObj, x, y, w, h, useMargin) {
     } else {
         ctx.drawImage(imgObj.img, x, y, w, h, 0, 0, w, h);
     }
-    return await processImageForLine(tempCanvas, useMargin);
+    
+    const trimmedCanvas = trimCanvas(tempCanvas);
+    return await processImageForLine(trimmedCanvas, useMargin, appState.stampScale || 1.0);
 }
 
 // ==========================================
@@ -942,7 +999,8 @@ const appState = {
     brushMode: 'none',
     brushSize: 20,
     isBrushing: false,
-    lastBrushPoint: null
+    lastBrushPoint: null,
+    stampScale: 1.0
 };
 
 function onImageLoaded(imgData) {
@@ -998,6 +1056,28 @@ function setupCropModeSwitch() {
     els.marginToggle.addEventListener('change', (e) => {
         appState.useMargin = e.target.checked;
     });
+
+    const stampScaleSlider = document.getElementById('stamp-scale');
+    const scaleVal = document.getElementById('scale-val');
+    if (stampScaleSlider) {
+        stampScaleSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            scaleVal.textContent = val;
+            appState.stampScale = val / 100;
+        });
+        
+        // 微調整ボタン(◀/▶)のイベント
+        document.querySelectorAll('.btn-fine-tune[data-target="stamp-scale"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const step = parseInt(e.target.dataset.step, 10);
+                let val = parseInt(stampScaleSlider.value, 10) + step;
+                val = Math.max(50, Math.min(100, val));
+                stampScaleSlider.value = val;
+                scaleVal.textContent = val;
+                appState.stampScale = val / 100;
+            });
+        });
+    }
 }
 
 function setupSimulator() {
