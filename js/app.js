@@ -668,7 +668,7 @@ function trimCanvas(canvas) {
     
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
-            if (data[(y * w + x) * 4 + 3] > 0) { top = y; found = true; break; }
+            if (data[(y * w + x) * 4 + 3] > 15) { top = y; found = true; break; }
         }
         if (found) break;
     }
@@ -677,7 +677,7 @@ function trimCanvas(canvas) {
     found = false;
     for (let y = h - 1; y >= 0; y--) {
         for (let x = 0; x < w; x++) {
-            if (data[(y * w + x) * 4 + 3] > 0) { bottom = y; found = true; break; }
+            if (data[(y * w + x) * 4 + 3] > 15) { bottom = y; found = true; break; }
         }
         if (found) break;
     }
@@ -685,7 +685,7 @@ function trimCanvas(canvas) {
     found = false;
     for (let x = 0; x < w; x++) {
         for (let y = top; y <= bottom; y++) {
-            if (data[(y * w + x) * 4 + 3] > 0) { left = x; found = true; break; }
+            if (data[(y * w + x) * 4 + 3] > 15) { left = x; found = true; break; }
         }
         if (found) break;
     }
@@ -693,7 +693,7 @@ function trimCanvas(canvas) {
     found = false;
     for (let x = w - 1; x >= 0; x--) {
         for (let y = top; y <= bottom; y++) {
-            if (data[(y * w + x) * 4 + 3] > 0) { right = x; found = true; break; }
+            if (data[(y * w + x) * 4 + 3] > 15) { right = x; found = true; break; }
         }
         if (found) break;
     }
